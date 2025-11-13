@@ -20,7 +20,7 @@ class ShotTimerViewModel(application: Application) : AndroidViewModel(applicatio
     private var timerJob: Job? = null
     private var randomBeepJob: Job? = null
     private val audioProcessor = AudioProcessor(::onShotDetected) { _uiState.value.sensitivity }
-    private val beeper = Beeper()
+    private val beeper = Beeper(audioProcessor)
     private val settingsRepository = SettingsRepository(application)
 
     init {
@@ -52,7 +52,6 @@ class ShotTimerViewModel(application: Application) : AndroidViewModel(applicatio
             delay(_uiState.value.startDelay * 1000L)
 
             if (_uiState.value.beepOnStart) {
-                audioProcessor.ignoreSoundsFor(250)
                 beeper.beep()
                 delay(200)
             }
@@ -68,7 +67,6 @@ class ShotTimerViewModel(application: Application) : AndroidViewModel(applicatio
                             val delay = Random.nextInt(min, max + 1)
                             delay(delay * 1000L)
                             viewModelScope.launch {
-                                audioProcessor.ignoreSoundsFor(250)
                                 beeper.beep()
                             }
                         } else {
