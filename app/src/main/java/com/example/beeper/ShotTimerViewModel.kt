@@ -67,8 +67,10 @@ class ShotTimerViewModel(application: Application) : AndroidViewModel(applicatio
                         if (min < max) {
                             val delay = Random.nextInt(min, max + 1)
                             delay(delay * 1000L)
-                            audioProcessor.ignoreSoundsFor(250)
-                            beeper.beep()
+                            viewModelScope.launch {
+                                audioProcessor.ignoreSoundsFor(250)
+                                beeper.beep()
+                            }
                         } else {
                             break
                         }
