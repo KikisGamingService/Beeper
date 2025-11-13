@@ -5,7 +5,6 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
-import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
 
 private const val TAG = "AudioProcessor"
@@ -17,11 +16,6 @@ class AudioProcessor(
 
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
-    private val ignoreUntil = AtomicLong(0)
-
-    fun ignoreSoundsFor(durationMillis: Long) {
-        ignoreUntil.set(System.currentTimeMillis() + durationMillis)
-    }
 
     @SuppressLint("MissingPermission")
     fun start() {
@@ -60,10 +54,6 @@ class AudioProcessor(
     }
 
     private fun process(buffer: ShortArray) {
-        if (System.currentTimeMillis() < ignoreUntil.get()) {
-            return // Sound ignored
-        }
-
         val maxAmplitude = buffer.maxOfOrNull { Math.abs(it.toDouble()) } ?: 0.0
 
         // The threshold is inversely proportional to the sensitivity.
