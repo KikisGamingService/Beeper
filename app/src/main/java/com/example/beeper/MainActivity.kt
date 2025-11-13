@@ -47,6 +47,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,6 +60,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.beeper.ui.theme.BeeperTheme
+
+private enum class Dialog {
+    None,
+    StartDelay,
+    RandomBeep,
+    Sensitivity
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
@@ -73,117 +81,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val uiState by viewModel.uiState.collectAsState()
-            BeeperTheme(darkTheme = uiState.isDarkMode) {
-                var showMenu by remember { mutableStateOf(false) }
-                var showStartDelayDialog by remember { mutableStateOf(false) }
-                var showRandomBeepDialog by remember { mutableStateOf(false) }
-                var showSensitivityDialog by remember { mutableStateOf(false) }
-
-                if (showStartDelayDialog) {
-                    StartDelayDialog(
-                        currentDelay = uiState.startDelay,
-                        onDismiss = { showStartDelayDialog = false },
-                        onConfirm = {
-                            viewModel.setStartDelay(it)
-                            showStartDelayDialog = false
-                        }
-                    )
-                }
-
-                if (showRandomBeepDialog) {
-                    RandomBeepDialog(
-                        uiState = uiState,
-                        onDismiss = { showRandomBeepDialog = false },
-                        onConfirm = { enabled, min, max ->
-                            viewModel.setRandomBeepLoop(enabled, min, max)
-                            showRandomBeepDialog = false
-                        }
-                    )
-                }
-
-                if (showSensitivityDialog) {
-                    SensitivityDialog(
-                        currentSensitivity = uiState.sensitivity,
-                        onDismiss = { showSensitivityDialog = false },
-                        onConfirm = {
-                            viewModel.setSensitivity(it)
-                            showSensitivityDialog = false
-                        }
-                    )
-                }
-
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    topBar = {
-                        TopAppBar(
-                            title = { Text("Beeper") },
-                            actions = {
-                                IconButton(onClick = { showMenu = true }) {
-                                    Icon(Icons.Default.MoreVert, "Options")
-                                }
-                                DropdownMenu(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Beep on start") },
-                                        onClick = { viewModel.setBeepOnStart(!uiState.beepOnStart) },
-                                        leadingIcon = { Icon(Icons.Filled.MusicNote, "Beep on start") },
-                                        trailingIcon = {
-                                            Checkbox(
-                                                checked = uiState.beepOnStart,
-                                                onCheckedChange = { viewModel.setBeepOnStart(it) }
-                                            )
-                                        }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Start delay") },
-                                        onClick = {
-                                            showStartDelayDialog = true
-                                            showMenu = false
-                                        },
-                                        leadingIcon = { Icon(Icons.Filled.Timer, "Start delay") }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Random beep loop") },
-                                        onClick = {
-                                            showRandomBeepDialog = true
-                                            showMenu = false
-                                        },
-                                        leadingIcon = { Icon(Icons.Filled.Shuffle, "Random beep loop") }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Sensitivity") },
-                                        onClick = {
-                                            showSensitivityDialog = true
-                                            showMenu = false
-                                        },
-                                        leadingIcon = { Icon(Icons.Filled.Tune, "Sensitivity") }
-                                    )
-                                    DropdownMenuItem(
-                                        text = { Text("Dark Mode") },
-                                        onClick = { viewModel.setDarkMode(!uiState.isDarkMode) },
-                                        leadingIcon = { Icon(Icons.Filled.DarkMode, "Dark Mode") },
-                                        trailingIcon = {
-                                            Switch(
-                                                checked = uiState.isDarkMode,
-                                                onCheckedChange = { viewModel.setDarkMode(it) }
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                        )
-                    }
-                ) { innerPadding ->
-                    ShotTimerScreen(
-                        modifier = Modifier.padding(innerPadding),
-                        uiState = uiState,
-                        onStartClick = ::onStartClick
-                    )
-                }
-            }
+            MainScreen(viewModel = viewModel, onStartClick = ::onStartClick)
         }
     }
 
@@ -200,6 +98,126 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Suppress("UNUSED_ASSIGNMENT")
+@Composable
+private fun MainScreen(viewModel: ShotTimerViewModel, onStartClick: () -> Unit) {
+    val uiState by viewModel.uiState.collectAsState()
+    BeeperTheme(darkTheme = uiState.isDarkMode) {
+        var showMenu by remember { mutableStateOf(false) }
+        var shownDialog by remember { mutableStateOf(Dialog.None) }
+
+        when (shownDialog) {
+            Dialog.StartDelay -> {
+                StartDelayDialog(
+                    currentDelay = uiState.startDelay,
+                    onDismiss = { shownDialog = Dialog.None },
+                    onConfirm = {
+                        viewModel.setStartDelay(it)
+                        shownDialog = Dialog.None
+                    }
+                )
+            }
+
+            Dialog.RandomBeep -> {
+                RandomBeepDialog(
+                    uiState = uiState,
+                    onDismiss = { shownDialog = Dialog.None },
+                    onConfirm = { enabled, min, max ->
+                        viewModel.setRandomBeepLoop(enabled, min, max)
+                        shownDialog = Dialog.None
+                    }
+                )
+            }
+
+            Dialog.Sensitivity -> {
+                SensitivityDialog(
+                    currentSensitivity = uiState.sensitivity,
+                    onDismiss = { shownDialog = Dialog.None },
+                    onConfirm = {
+                        viewModel.setSensitivity(it)
+                        shownDialog = Dialog.None
+                    }
+                )
+            }
+
+            Dialog.None -> {}
+        }
+
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    title = { Text("Beeper") },
+                    actions = {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, "Options")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Beep on start") },
+                                onClick = { viewModel.setBeepOnStart(!uiState.beepOnStart) },
+                                leadingIcon = { Icon(Icons.Filled.MusicNote, "Beep on start") },
+                                trailingIcon = {
+                                    Checkbox(
+                                        checked = uiState.beepOnStart,
+                                        onCheckedChange = null
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Start delay") },
+                                onClick = {
+                                    shownDialog = Dialog.StartDelay
+                                    showMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Filled.Timer, "Start delay") }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Random beep loop") },
+                                onClick = {
+                                    shownDialog = Dialog.RandomBeep
+                                    showMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Filled.Shuffle, "Random beep loop") }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Sensitivity") },
+                                onClick = {
+                                    shownDialog = Dialog.Sensitivity
+                                    showMenu = false
+                                },
+                                leadingIcon = { Icon(Icons.Filled.Tune, "Sensitivity") }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Dark Mode") },
+                                onClick = { viewModel.setDarkMode(!uiState.isDarkMode) },
+                                leadingIcon = { Icon(Icons.Filled.DarkMode, "Dark Mode") },
+                                trailingIcon = {
+                                    Switch(
+                                        checked = uiState.isDarkMode,
+                                        onCheckedChange = null
+                                    )
+                                }
+                            )
+                        }
+                    }
+                )
+            }
+        ) { innerPadding ->
+            ShotTimerScreen(
+                modifier = Modifier.padding(innerPadding),
+                uiState = uiState,
+                onStartClick = onStartClick
+            )
+        }
+    }
+}
+
+@Suppress("UNUSED_ASSIGNMENT")
 @Composable
 private fun StartDelayDialog(
     currentDelay: Int,
@@ -232,6 +250,7 @@ private fun StartDelayDialog(
     )
 }
 
+@Suppress("UNUSED_ASSIGNMENT")
 @Composable
 private fun RandomBeepDialog(
     uiState: ShotTimerUiState,
@@ -278,13 +297,14 @@ private fun RandomBeepDialog(
     )
 }
 
+@Suppress("UNUSED_ASSIGNMENT")
 @Composable
 private fun SensitivityDialog(
     currentSensitivity: Int,
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    var sensitivity by remember { mutableStateOf(currentSensitivity.toFloat()) }
+    var sensitivity by remember { mutableFloatStateOf(currentSensitivity.toFloat()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
